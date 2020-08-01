@@ -50,6 +50,7 @@ int main()
 	}
 
 	img = malloc(w*h*4);
+	memset(img, 0xff, sizeof(char)*w*h*4);
 	if (img == NULL) {
 		printf("Could not alloc image buffer.\n");
 		goto error;
