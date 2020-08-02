@@ -1246,7 +1246,9 @@ static unsigned int nsvg__parseColorRGBA(const char* str)
 	if (strchr(s1, '%')) {
 		return NSVG_RGBA((r*255)/100,(g*255)/100,(b*255)/100,(a*255)/100);
 	} else {
-		return NSVG_RGBA(r,g,b,(a*255));
+		float alpha = a * 255;
+		if (alpha < 1.0) alpha = 1.0;
+		return NSVG_RGBA(r,g,b,alpha);
 	}
 }
 
@@ -2985,6 +2987,7 @@ error:
     }
     return NULL;
 }
+
 
 void nsvgDelete(NSVGimage* image)
 {
