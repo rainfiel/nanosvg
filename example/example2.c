@@ -26,16 +26,18 @@
 #define NANOSVGRAST_IMPLEMENTATION
 #include "nanosvgrast.h"
 
-int main()
+int main(int argc, const char *argv[])
 {
+	if (argc != 2) return 0;
+	const char* targetFile = argv[1];
+
 	NSVGimage *image = NULL;
 	NSVGrasterizer *rast = NULL;
 	unsigned char* img = NULL;
 	int w, h;
-	const char* filename = "../example/23.svg";
 
-	printf("parsing %s\n", filename);
-	image = nsvgParseFromFile(filename, "px", 96.0f);
+	printf("parsing %s\n", targetFile);
+	image = nsvgParseFromFile(targetFile, "px", 96.0f);
 	if (image == NULL) {
 		printf("Could not open SVG image.\n");
 		goto error;
@@ -59,8 +61,10 @@ int main()
 	printf("rasterizing image %d x %d\n", w, h);
 	nsvgRasterize(rast, image, 0,0,1, img, w, h, w*4);
 
-	printf("writing svg.png\n");
- 	stbi_write_png("svg.png", w, h, 4, img, w*4);
+	char* png = NULL;
+	asprintf(&png, "%s%s", targetFile, ".png");
+	printf("writing %s\n", png);
+ 	stbi_write_png(png, w, h, 4, img, w*4);
 
 error:
 	nsvgDeleteRasterizer(rast);
