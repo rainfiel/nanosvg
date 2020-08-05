@@ -63,10 +63,10 @@ local function split_svg(parser)
       local id = v._attr.id
       local minx, maxx, miny, maxy = bounds(v)
       print(id, minx, maxx, miny, maxy)
-      desc[tostring(id)] = {bounds={minx, miny, maxx, maxy}}
+      desc[tostring(id)] = {bounds={minx, miny, maxx, maxy}, tag=v._attr.tag}
 
-      root.svg.g = {v}
-      local t = xml2lua.toXml(root, "", 0)
+      local svg = {svg={g={v, _attr=v._attr}}}
+      local t = xml2lua.toXml(svg, "", 0)
       local f = io.open("example/chunks/"..tostring(id)..".svg", "w")
       f:write(t)
       f:close()
