@@ -1,6 +1,7 @@
 
 local xml2lua = require "xml2lua.xml2lua"
 local handler = require "xml2lua.xmlhandler.tree"
+local json = require "json"
 
 local path = ...
 
@@ -56,11 +57,13 @@ local function split_svg(parser)
   local root = parser.handler.root
   local g = parser.handler.root.svg.g
 
+  local desc = {}
   print("g count:", #g)
   for k, v in ipairs(g) do
       local id = v._attr.id
       local minx, maxx, miny, maxy = bounds(v)
       print(id, minx, maxx, miny, maxy)
+      desc[tostring(id)] = {bounds={minx, miny, maxx, maxy}}
 
       root.svg.g = {v}
       local t = xml2lua.toXml(root, "", 0)
@@ -68,6 +71,10 @@ local function split_svg(parser)
       f:write(t)
       f:close()
   end
+
+  local f = io.open("example/chunks/desc.json", "w")
+  f:write(json:encode_pretty(desc))
+  f:close()
 end
 
 local parser = read_xml(path)
