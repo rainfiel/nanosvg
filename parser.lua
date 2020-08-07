@@ -18,6 +18,13 @@ local function read_xml(path)
   return parser
 end
 
+local function split(str, sep)
+   local sep, fields = sep or ":", {}
+   local pattern = string.format("([^%s]+)", sep)
+   str:gsub(pattern, function(c) fields[#fields+1] = c end)
+   return fields
+end
+
 local function parse_points(str_points)
   local str=string.format("return {%s}",string.gsub(str_points, "^%s+", ""):gsub(" ",","))
   return load(str)()
@@ -53,6 +60,62 @@ local function bounds(group)
   return minx, maxx, miny, maxy
 end
 
+local function save_svg(polylines, attr)
+  local id = attr.id
+  local svg = {svg={g={polylines, _attr=attr}}}
+  local t = xml2lua.toXml(svg, "", 0)
+  local f = io.open("example/chunks/"..tostring(id)..".svg", "w")
+  f:write(t)
+  f:close()
+end
+
+local function split_g(g, desc)
+  local chunks = {}
+  local src_polyline = g.polyline
+  for k, v in ipairs(src_polyline) do
+    local tag = v._attr.tag
+    if not chunks[tag] then
+      chunks[tag] = {tag=tag}
+      table.insert(chunks, chunks[tag])
+    end
+    table.insert(chunks[tag], k)
+  end
+  if #chunks == 1 then return end
+
+  local bg = {}
+  local new_ids = {}
+  local parent_id = g._attr.id
+  for k, v in ipairs(chunks) do
+    local s = split(v.tag, ".")
+    if #s == 1 then
+      for _, idx in ipairs(v) do
+        table.insert(bg, src_polyline[idx])
+      end
+    elseif #s == 3 then
+      local attr = {id=string.format("%s.%d", parent_id, k), tag=s[2]}
+      table.insert(new_ids, attr.id)
+      local new_polylines = {}
+      local new_g = {}
+      new_g._attr = attr
+      new_g.polyline = new_polylines
+      for _, idx in ipairs(v) do
+        table.insert(new_polylines, src_polyline[idx])
+      end
+
+      local minx, maxx, miny, maxy = bounds(new_g)
+      desc[attr.id] = {bounds={minx, miny, maxx, maxy}, tag=attr.tag}
+
+      save_svg(new_g, attr)
+    else
+      error("tag invalid:"..v.tag)
+    end
+  end
+  assert(#bg>0, "chunk without bg "..g._attr.tag)
+  g.polyline = bg
+  g._attr.id = parent_id..".1"
+  return new_ids
+end
+
 local function split_svg(parser)
   local root = parser.handler.root
   local g = parser.handler.root.svg.g
@@ -60,16 +123,13 @@ local function split_svg(parser)
   local desc = {}
   print("g count:", #g)
   for k, v in ipairs(g) do
+      local new_ids = split_g(v, desc)
+
       local id = v._attr.id
       local minx, maxx, miny, maxy = bounds(v)
-      print(id, minx, maxx, miny, maxy)
-      desc[tostring(id)] = {bounds={minx, miny, maxx, maxy}, tag=v._attr.tag}
+      desc[tostring(id)] = {bounds={minx, miny, maxx, maxy}, tag=v._attr.tag, children=new_ids}
 
-      local svg = {svg={g={v, _attr=v._attr}}}
-      local t = xml2lua.toXml(svg, "", 0)
-      local f = io.open("example/chunks/"..tostring(id)..".svg", "w")
-      f:write(t)
-      f:close()
+      save_svg(v, v._attr)
   end
 
   local f = io.open("example/chunks/desc.json", "w")
