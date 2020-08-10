@@ -112,7 +112,6 @@ local function split_g(g, desc)
   end
   assert(#bg>0, "chunk without bg "..g._attr.tag)
   g.polyline = bg
-  g._attr.id = parent_id..".1"
   return new_ids
 end
 
