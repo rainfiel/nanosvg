@@ -3,8 +3,15 @@ local xml2lua = require "xml2lua.xml2lua"
 local handler = require "xml2lua.xmlhandler.tree"
 local json = require "json"
 
-local path = ...
+local function split(str, sep)
+   local sep, fields = sep or ":", {}
+   local pattern = string.format("([^%s]+)", sep)
+   str:gsub(pattern, function(c) fields[#fields+1] = c end)
+   return fields
+end
 
+local path = ...
+local output_root = split(path, ".")[1]
 print("begin parse:", path)
 
 local function read_xml(path)
@@ -16,13 +23,6 @@ local function read_xml(path)
   local parser = xml2lua.parser(handler)
   parser:parse(t)
   return parser
-end
-
-local function split(str, sep)
-   local sep, fields = sep or ":", {}
-   local pattern = string.format("([^%s]+)", sep)
-   str:gsub(pattern, function(c) fields[#fields+1] = c end)
-   return fields
 end
 
 local function parse_points(str_points)
@@ -64,7 +64,7 @@ local function save_svg(polylines, attr)
   local id = attr.id
   local svg = {svg={g={polylines, _attr=attr}}}
   local t = xml2lua.toXml(svg, "", 0)
-  local f = io.open("example/chunks/"..tostring(id)..".svg", "w")
+  local f = io.open(output_root.."/"..tostring(id)..".svg", "w")
   f:write(t)
   f:close()
 end
@@ -88,9 +88,11 @@ local function split_g(g, desc)
   for k, v in ipairs(chunks) do
     local s = split(v.tag, ".")
     if #s == 1 then
+      print("......................:", k, v.tag)
       for _, idx in ipairs(v) do
         table.insert(bg, src_polyline[idx])
       end
+      table.insert(new_ids, parent_id)
     elseif #s == 3 then
       local attr = {id=string.format("%s.%d", parent_id, k), tag=s[2]}
       table.insert(new_ids, attr.id)
@@ -131,7 +133,7 @@ local function split_svg(parser)
       save_svg(v, v._attr)
   end
 
-  local f = io.open("example/chunks/desc.json", "w")
+  local f = io.open(output_root.."/desc.json", "w")
   f:write(json:encode_pretty(desc))
   f:close()
 end
